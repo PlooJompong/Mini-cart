@@ -28,5 +28,5 @@ import { useBlockProps } from '@wordpress/block-editor';
 export default function Edit({ attributes, setAttributes }) {
   const blockProps = useBlockProps();
 
-  return <div {...blockProps} />;
+  return <div {...blockProps}>Mini Cart</div>;
 }

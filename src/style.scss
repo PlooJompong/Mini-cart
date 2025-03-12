@@ -20,27 +20,19 @@
   font-size: 2rem;
   margin-bottom: 2rem;
 }
+
 .mini-cart__product-wrapper-grid-cols-3 {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   gap: 1rem;
   font-size: 1rem;
   padding: 1rem 0;
-  // background-color: lightgray;
 }
-
-// .product-wrapper__product-img {
-// 	background-color: lightcoral;
-// }
 
 .product-wrapper__product-img img {
   width: 4rem;
   aspect-ratio: 1;
 }
-
-// .product-wrapper__product-info {
-// 	background-color: lightblue;
-// }
 
 .product-info__name-wrapper {
   margin-bottom: 0.75rem;
@@ -74,6 +66,7 @@
 .product-info__description-wrapper {
   margin-bottom: 0.75rem;
 }
+
 .description-wrapper__description {
   font-size: 0.75rem;
   margin: 0;
@@ -151,6 +144,10 @@
   border: none;
   background: transparent;
   cursor: pointer;
+}
+
+.quantity-wrapper__quantity-remove:focus {
+  outline: none;
 }
 
 .quantity-wrapper__quantity-remove:hover {
