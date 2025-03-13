@@ -23,15 +23,19 @@
 
 .mini-cart__product-wrapper-grid-cols-3 {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
-  gap: 1rem;
+  grid-template-columns: 0.5fr 2fr auto;
   font-size: 1rem;
   padding: 1rem 0;
+  row-gap: 2rem;
 }
 
 .product-wrapper__product-img img {
   width: 4rem;
   aspect-ratio: 1;
+}
+
+.product-wrapper__product-info {
+  padding-left: 0.5rem;
 }
 
 .product-info__name-wrapper {
@@ -65,10 +69,10 @@
 
 .product-info__description-wrapper {
   margin-bottom: 0.75rem;
+  font-size: 0.75rem;
 }
 
 .description-wrapper__description {
-  font-size: 0.75rem;
   margin: 0;
 }
 
@@ -155,5 +159,20 @@
 }
 
 .product-wrapper__product-total-price {
+  display: flex;
+  flex-direction: column;
   text-align: right;
+}
+
+.product-total-price__price {
+  margin-bottom: 0.75rem;
+}
+
+.product-total-price__total-sale {
+  font-size: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid black;
+  font-weight: 600;
+  padding: 0 0.5rem;
+  text-transform: uppercase;
 }
