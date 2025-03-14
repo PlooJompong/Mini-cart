@@ -2,23 +2,119 @@ import { store } from '@wordpress/interactivity';
 
 const { state, actions } = store('mini-cart', {
   state: {
-    cartItems: 0,
     cartData: null,
-    isLoading: false,
     apiNonce: '',
   },
   actions: {
     async fetchCart() {
-      state.isLoading = true;
       try {
         const response = await fetch('/wp-json/wc/store/v1/cart');
+
+        if (!response.ok) {
+          throw new Error(`Error fetching cart: ${response.status}`);
+        }
+
         const data = await response.json();
 
+        // Check if data exists and has expected structure
+        if (!data) {
+          console.error('Cart data is undefined or null');
+          return;
+        }
+
+        // Defensively access items array
+        if (!data.items || !Array.isArray(data.items)) {
+          console.warn('Cart items is not an array or is undefined');
+          data.items = []; // Initialize as empty array if undefined
+        }
+
+        if (data.items.length) {
+          if (!data.totals) {
+            console.warn('Cart totals is undefined');
+            data.totals = {};
+          }
+
+          // Get currency formatting preferences from Woocommerce
+          const thousandSep = data.totals.currency_thousand_separator || ' ';
+          const decimalSep = data.totals.currency_decimal_separator || ',';
+
+          // Remove <p></p> from item.description and item.short_description
+          const cleanDescription = (text) => {
+            return text
+              ? new DOMParser().parseFromString(text, 'text/html').body
+                  .textContent || ''
+              : '';
+          };
+
+          data.items.forEach((item) => {
+            try {
+              // Ensure required nested objects exist
+              if (!item.prices) item.prices = {};
+              if (!item.totals) item.totals = {};
+
+              // Add onSale to the item
+              item.onSale =
+                Number(item.prices.regular_price) !==
+                Number(item.prices.sale_price);
+
+              // Add formatted_regular_price to item.prices
+              item.prices.formatted_regular_price = formatPrice(
+                Number(item.prices.regular_price),
+                item.prices.currency_symbol,
+                thousandSep,
+                decimalSep
+              );
+
+              // Add formatted_sale_price to item.prices
+              item.prices.formatted_sale_price = formatPrice(
+                Number(item.prices.sale_price),
+                item.prices.currency_symbol,
+                thousandSep,
+                decimalSep
+              );
+
+              // Add formatted_discount_amount to item.prices
+              const discountAmount =
+                Number(item.prices.regular_price) -
+                Number(item.prices.sale_price);
+              item.prices.formatted_discount_amount = formatPrice(
+                discountAmount,
+                item.prices.currency_symbol,
+                thousandSep,
+                decimalSep
+              );
+
+              // Add formatted_total_price to item.totals
+              item.totals.formatted_total_price = formatPrice(
+                item.totals.line_total,
+                item.totals.currency_symbol,
+                thousandSep,
+                decimalSep
+              );
+
+              // Add formatted_total_discount to totals
+              const totalDiscountPrice = discountAmount * item.quantity;
+              item.totals.formatted_total_discount = formatPrice(
+                totalDiscountPrice,
+                item.totals.currency_symbol,
+                thousandSep,
+                decimalSep
+              );
+
+              // Check for description to use
+              item.use_description =
+                cleanDescription(item.description) ||
+                cleanDescription(item.short_description);
+            } catch (itemError) {
+              console.error('Error processing cart item:', itemError, item);
+            }
+          });
+        }
+
+        // Save data to localStorage
         localStorage.setItem('mini-cart', JSON.stringify(data));
 
-        console.log('Fetched Cart:', data);
-
-        // Save none for POST request from response headers
+        // Save nonce from response headers for POST request
         const nonce = response.headers.get('nonce');
 
         if (nonce !== state.apiNonce) {
@@ -27,24 +123,20 @@ const { state, actions } = store('mini-cart', {
           localStorage.setItem(
             'mini-cart-nonce',
             JSON.stringify({ nonce: state.apiNonce })
-          ); // Store in localStorage if needed
-
-          console.log('Nonce saved:', nonce);
+          );
         }
+
+        console.log('Fetched Cart:', data);
+        console.log('Nonce saved:', nonce);
 
         // Update state with WooCommerce cart data
         state.cartData = data;
-        state.cartItems = data.items_count;
-
-        // Render cart items
-        renderCartItems(data.items);
       } catch (error) {
         console.error('Error fetching cart:', error);
-      } finally {
-        state.isLoading = false;
       }
     },
 
+    // Update cart item
     async updateCartItem(key, quantity) {
       try {
         const response = await fetch('/wp-json/wc/store/v1/cart/update-item', {
@@ -70,6 +162,7 @@ const { state, actions } = store('mini-cart', {
       }
     },
 
+    // Remove cart item
     async removeCartItem(key) {
       try {
         const response = await fetch('/wp-json/wc/store/v1/cart/remove-item', {
@@ -93,236 +186,114 @@ const { state, actions } = store('mini-cart', {
         console.error('Error removing cart item:', error);
       }
     },
+
+    // Decrease quantity
+    decreaseQuantity(event) {
+      const key = event.target.getAttribute('key');
+      // Find the current item in the cart state
+      const item = state.cartData.items.find((item) => item.key === key);
+      if (item) {
+        // If quantity would go below 1, remove the item instead
+        if (item.quantity <= 1) {
+          actions.removeCartItem(key);
+          return;
+        }
+
+        // Otherwise decrease quantity
+        const newQuantity = Math.max(
+          Number(item.quantity_limits.minimum || 1),
+          item.quantity - 1
+        );
+        actions.updateCartItem(key, newQuantity);
+      }
+    },
+
+    // Increase quantity
+    increaseQuantity(event) {
+      const key = event.target.getAttribute('key');
+      // Find the current item in the cart state
+      const item = state.cartData.items.find((item) => item.key === key);
+
+      if (item) {
+        const maximum = Number(item.quantity_limits.maximum || Infinity);
+
+        // Check if already at maximum quantity
+        if (item.quantity >= maximum) {
+          // Already at max, do nothing
+          return;
+        }
+
+        // Otherwise increase quantity
+        const newQuantity = Math.min(maximum, item.quantity + 1);
+        actions.updateCartItem(key, newQuantity);
+      }
+    },
+
+    // Update quantity
+    updateQuantityFromInput(event) {
+      const key = event.target.getAttribute('key');
+      let newQuantity = Number(event.target.value);
+      const item = state.cartData.items.find((item) => item.key === key);
+
+      if (item) {
+        const minimum = Number(item.quantity_limits.minimum || 1);
+        const maximum = Number(item.quantity_limits.maximum || Infinity);
+
+        // If value is less than 1, set to 1 or minimum
+        if (newQuantity < 1) {
+          newQuantity = minimum;
+          // Update the input value visually
+          event.target.value = newQuantity;
+        }
+
+        // If value exceeds maximum, cap at maximum
+        if (newQuantity > maximum) {
+          newQuantity = maximum;
+          // Update the input value visually
+          event.target.value = newQuantity;
+        }
+
+        actions.updateCartItem(key, newQuantity);
+      }
+    },
+
+    // Remove item
+    removeItem(event) {
+      const key = event.target.getAttribute('key');
+      actions.removeCartItem(key);
+    },
   },
   callbacks: {
     callbacksLog: () => {
-      console.log(`Cart updated: ${state.cartItems}`);
+      console.log('callbacksLog');
     },
   },
 });
 
-// Function to render cart items
-function renderCartItems(items) {
-  const container = document.querySelector(
-    '.mini-cart__product-wrapper-grid-cols-3'
+// Helper function to format prices using WooCommerce currency settings
+function formatPrice(
+  price,
+  currencySymbol,
+  thousandSeparator = ' ',
+  decimalSeparator = ','
+) {
+  // Convert to decimal format
+  const decimalPrice = (price / 100).toFixed(2);
+
+  // Split into integer and decimal parts
+  const [integerPart, decimalPart] = decimalPrice.split('.');
+
+  // Add thousand separator
+  const formattedInteger = integerPart.replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    thousandSeparator
   );
-  if (!container) return;
 
-  // Clear existing items
-  container.innerHTML = '';
+  // Combine with decimal part using the specified decimal separator
+  const formattedPrice = `${formattedInteger}${decimalSeparator}${decimalPart}`;
 
-  // Render each item
-  items.forEach((item) => {
-    const isOnSale = item.prices.sale_price !== item.prices.regular_price;
-
-    // Calculate total savings for the item
-    const totalSavings = isOnSale
-      ? (item.prices.regular_price - item.prices.sale_price) * item.quantity
-      : 0;
-
-    const itemHTML = `
-      <div class="product-wrapper__product-img">
-        <a href="${item.permalink}" class="product-img-wrapper__image">
-          <img src="${item.images[0].src}" alt="${item.images[0].alt}" />
-        </a>
-      </div>
-
-      <div class="product-wrapper__product-info">
-        <div class="product-info__name-wrapper">
-          <a href="${item.permalink}" class="name-wrapper__name">
-            ${item.name}
-          </a>
-        </div>
-
-        <div class="product-info__price-wrapper">
-          <span class="price-wrapper__price ${isOnSale ? 'is-discount' : ''}">
-            ${formatPrice(
-              item.prices.regular_price,
-              item.prices.currency_symbol
-            )}
-          </span>
-          ${
-            isOnSale
-              ? `
-            <span class="price-wrapper__price-discount">
-              ${formatPrice(
-                item.prices.sale_price,
-                item.prices.currency_symbol
-              )}
-            </span>
-          `
-              : ''
-          }
-        </div>
-
-        ${
-          isOnSale
-            ? `
-          <div class="product-info__sale-badge-wrapper">
-            <span class="sale-badge-wrapper__sale">Save ${formatPrice(
-              item.prices.regular_price - item.prices.sale_price,
-              item.prices.currency_symbol
-            )}</span>
-          </div>
-        `
-            : ''
-        }
-
-        <div class="product-info__description-wrapper">
-          <p class="description-wrapper__description">
-            ${item.short_description || item.description}
-          </p>
-          <ul class="description-wrapper__description-list">
-            ${item.variation
-              .map(
-                (variation) => `
-              <li class="description-list__details">${variation.attribute}: ${variation.value}</li>
-            `
-              )
-              .join('')}
-          </ul>
-        </div>
-
-        <div class="product-info__quantity-wrapper">
-          <div class="quantity-wrapper__quantity-selector">
-            <button class="quantity-selector__decrease quantity-selector__button" data-key="${
-              item.key
-            }">
-              -
-            </button>
-            <input
-              type="number"
-              min="${item.quantity_limits.minimum}"
-              step="${item.quantity_limits.multiple_of}"
-              max="${item.quantity_limits.maximum}"
-              value="${item.quantity}"
-              class="quantity-selector__quantity" data-key="${item.key}" />
-            <button class="quantity-selector__increase quantity-selector__button" data-key="${
-              item.key
-            }">
-              +
-            </button>
-          </div>
-
-          <button class="quantity-wrapper__quantity-remove" data-key="${
-            item.key
-          }">
-            Remove item
-          </button>
-        </div>
-      </div>
-
-      <div class="product-wrapper__product-total-price">
-        <span class="product-total-price__price">${formatPrice(
-          item.totals.line_total,
-          item.totals.currency_symbol
-        )}</span>
-        ${
-          isOnSale
-            ? `
-          <span class="product-total-price__total-sale">Save ${formatPrice(
-            totalSavings,
-            item.totals.currency_symbol
-          )}</span>
-        `
-            : ''
-        }
-      </div>
-    `;
-
-    // Append the item HTML to the container
-    container.insertAdjacentHTML('beforeend', itemHTML);
-  });
-
-  // Add event listeners for quantity changes
-  addQuantityEventListeners();
-}
-
-// Helper function to format prices
-function formatPrice(price, currencySymbol) {
-  const formattedPrice = (price / 100).toFixed(2).replace('.', ','); // Convert to decimal format
+  // Return with currency symbol
   return `${formattedPrice} ${currencySymbol}`;
-}
-
-// Add event listeners for quantity changes
-function addQuantityEventListeners() {
-  const decreaseButtons = document.querySelectorAll(
-    '.quantity-selector__decrease'
-  );
-  const increaseButtons = document.querySelectorAll(
-    '.quantity-selector__increase'
-  );
-  const quantityInputs = document.querySelectorAll(
-    '.quantity-selector__quantity'
-  );
-  const removeButtons = document.querySelectorAll(
-    '.quantity-wrapper__quantity-remove'
-  );
-
-  // Decrease quantity
-  decreaseButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const key = button.getAttribute('data-key');
-      const quantityInput = document.querySelector(
-        `.quantity-selector__quantity[data-key="${key}"]`
-      );
-      let quantity = parseInt(quantityInput.value, 10);
-
-      if (quantity > 1) {
-        quantity--;
-        quantityInput.value = quantity;
-        actions.updateCartItem(key, quantity);
-      } else {
-        // Remove item if quantity is 0
-        actions.removeCartItem(key);
-      }
-    });
-  });
-
-  // Increase quantity
-  increaseButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const key = button.getAttribute('data-key');
-      const quantityInput = document.querySelector(
-        `.quantity-selector__quantity[data-key="${key}"]`
-      );
-      let quantity = parseInt(quantityInput.value, 10);
-
-      quantity++;
-      quantityInput.value = quantity;
-      actions.updateCartItem(key, quantity);
-    });
-  });
-
-  // Allow manual input
-  quantityInputs.forEach((input) => {
-    input.addEventListener('change', () => {
-      const key = input.getAttribute('data-key');
-      let newQuantity = parseInt(input.value, 10);
-
-      // Get min and max limits
-      const min = parseInt(input.min, 10) || 1;
-      const max = parseInt(input.max, 10) || 999;
-
-      // Validate and update
-      if (isNaN(newQuantity) || newQuantity < min) {
-        newQuantity = min; // Reset to minimum if invalid
-      } else if (newQuantity > max) {
-        newQuantity = max; // Reset to maximum if exceeded
-      }
-
-      input.value = newQuantity; // Ensure the displayed value is valid
-      actions.updateCartItem(key, newQuantity);
-    });
-  });
-
-  // Remove item
-  removeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      const key = button.getAttribute('data-key');
-      actions.removeCartItem(key);
-    });
-  });
 }
 
 // Fetch cart data on page load

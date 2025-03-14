@@ -27,23 +27,31 @@
   font-size: 1rem;
   padding: 1rem 0;
   row-gap: 2rem;
+  border-bottom: 1px solid #ddd;
 }
 
 .product-wrapper__product-img img {
-  width: 4rem;
+  width: 6rem;
   aspect-ratio: 1;
+  object-fit: cover;
 }
 
 .product-wrapper__product-info {
-  padding-left: 0.5rem;
+  padding-left: 0.75rem;
 }
 
 .product-info__name-wrapper {
   margin-bottom: 0.75rem;
 }
 
+.name-wrapper__sku {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
 .product-info__price-wrapper {
-  margin-bottom: 0.75rem;
+  display: flex;
 }
 
 .price-wrapper__price.is-discount {
@@ -51,18 +59,21 @@
 }
 
 .price-wrapper__price-discount {
+  color: red;
+  font-weight: 600;
   margin-left: 0.5rem;
 }
 
 .product-info__sale-badge-wrapper {
-  margin-bottom: 0.5rem;
   text-transform: uppercase;
 }
 
 .sale-badge-wrapper__sale {
+  display: inline-block;
   font-size: 0.75rem;
   border-radius: 4px;
-  border: 1px solid black;
+  color: red;
+  border: 1px solid red;
   font-weight: 600;
   padding: 0 0.5rem;
 }
@@ -73,7 +84,7 @@
 }
 
 .description-wrapper__description {
-  margin: 0;
+  margin-top: 0.5rem;
 }
 
 .description-wrapper__description-list {
@@ -82,11 +93,14 @@
   padding: 0;
 }
 
+.product-info__quantity-wrapper {
+  display: flex;
+}
+
 .quantity-wrapper__quantity-selector {
   display: flex;
   position: relative;
   width: 104px;
-  margin-bottom: 0.75rem;
   border: 1px solid hsla(0, 0%, 7%, 0.11);
   border-radius: 4px;
 }
@@ -143,10 +157,15 @@
 }
 
 .quantity-wrapper__quantity-remove {
-  font-size: 0.75rem;
-  text-decoration: underline;
+  margin-left: 1.5rem;
+  width: 1.25rem;
+  fill: white;
+  aspect-ratio: 1;
+  background: url(./assets/images/icon-delete.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
   border: none;
-  background: transparent;
   cursor: pointer;
 }
 
@@ -154,18 +173,10 @@
   outline: none;
 }
 
-.quantity-wrapper__quantity-remove:hover {
-  text-decoration: none;
-}
-
 .product-wrapper__product-total-price {
   display: flex;
   flex-direction: column;
   text-align: right;
-}
-
-.product-total-price__price {
-  margin-bottom: 0.75rem;
 }
 
 .product-total-price__total-sale {
