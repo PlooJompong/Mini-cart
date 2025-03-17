@@ -2,10 +2,16 @@ import { store } from '@wordpress/interactivity';
 
 const { state, actions } = store('mini-cart', {
   state: {
-    cartData: null,
+    isOpen: false,
+    cartData: { items: [], items_count: 0 },
     apiNonce: '',
   },
   actions: {
+    toggleCart() {
+      state.isOpen = !state.isOpen;
+      console.log(state.isOpen);
+    },
+
     async fetchCart() {
       try {
         const response = await fetch('/wp-json/wc/store/v1/cart');
@@ -28,15 +34,23 @@ const { state, actions } = store('mini-cart', {
           data.items = []; // Initialize as empty array if undefined
         }
 
+        // Get currency formatting preferences from Woocommerce
+        const thousandSep = data.totals.currency_thousand_separator || ' ';
+        const decimalSep = data.totals.currency_decimal_separator || ',';
+
+        // Add formatted_total_price to data.totals
+        data.totals.formatted_total_price = formatPrice(
+          Number(data.totals.total_price),
+          data.totals.currency_symbol,
+          thousandSep,
+          decimalSep
+        );
+
         if (data.items.length) {
           if (!data.totals) {
             console.warn('Cart totals is undefined');
             data.totals = {};
           }
-
-          // Get currency formatting preferences from Woocommerce
-          const thousandSep = data.totals.currency_thousand_separator || ' ';
-          const decimalSep = data.totals.currency_decimal_separator || ',';
 
           // Remove <p></p> from item.description and item.short_description
           const cleanDescription = (text) => {
@@ -57,7 +71,16 @@ const { state, actions } = store('mini-cart', {
                 Number(item.prices.regular_price) !==
                 Number(item.prices.sale_price);
 
-              // Add formatted_regular_price to item.prices
+              // Get first image source
+              if (
+                item.images &&
+                Array.isArray(item.images) &&
+                item.images.length > 0
+              ) {
+                item.firstImageSrc = item.images[0];
+              }
+
+              // Add formatted_regular_price per item to item.prices
               item.prices.formatted_regular_price = formatPrice(
                 Number(item.prices.regular_price),
                 item.prices.currency_symbol,
@@ -65,7 +88,7 @@ const { state, actions } = store('mini-cart', {
                 decimalSep
               );
 
-              // Add formatted_sale_price to item.prices
+              // Add formatted_sale_price per item to item.prices
               item.prices.formatted_sale_price = formatPrice(
                 Number(item.prices.sale_price),
                 item.prices.currency_symbol,
@@ -73,7 +96,7 @@ const { state, actions } = store('mini-cart', {
                 decimalSep
               );
 
-              // Add formatted_discount_amount to item.prices
+              // Add formatted_discount_amount per item to item.prices
               const discountAmount =
                 Number(item.prices.regular_price) -
                 Number(item.prices.sale_price);
@@ -84,7 +107,7 @@ const { state, actions } = store('mini-cart', {
                 decimalSep
               );
 
-              // Add formatted_total_price to item.totals
+              // Add formatted_total_price per item to item.totals
               item.totals.formatted_total_price = formatPrice(
                 item.totals.line_total,
                 item.totals.currency_symbol,
@@ -92,7 +115,7 @@ const { state, actions } = store('mini-cart', {
                 decimalSep
               );
 
-              // Add formatted_total_discount to totals
+              // Add formatted_total_discount per item to item.totals
               const totalDiscountPrice = discountAmount * item.quantity;
               item.totals.formatted_total_discount = formatPrice(
                 totalDiscountPrice,
@@ -103,8 +126,8 @@ const { state, actions } = store('mini-cart', {
 
               // Check for description to use
               item.use_description =
-                cleanDescription(item.description) ||
-                cleanDescription(item.short_description);
+                cleanDescription(item.short_description) ||
+                cleanDescription(item.description);
             } catch (itemError) {
               console.error('Error processing cart item:', itemError, item);
             }
@@ -262,10 +285,20 @@ const { state, actions } = store('mini-cart', {
       const key = event.target.getAttribute('key');
       actions.removeCartItem(key);
     },
+
+    // Listeners for Woocommerce add to cart buttons
+    setupListeners() {
+      if (typeof jQuery !== 'undefined') {
+        jQuery(document.body).on('added_to_cart', function () {
+          actions.fetchCart();
+        });
+      }
+    },
   },
   callbacks: {
-    callbacksLog: () => {
-      console.log('callbacksLog');
+    initializeStore() {
+      actions.fetchCart();
+      actions.setupListeners();
     },
   },
 });
@@ -295,6 +328,3 @@ function formatPrice(
   // Return with currency symbol
   return `${formattedPrice} ${currencySymbol}`;
 }
-
-// Fetch cart data on page load
-actions.fetchCart();
