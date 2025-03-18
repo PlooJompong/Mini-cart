@@ -289,9 +289,80 @@ const { state, actions } = store('mini-cart', {
     // Listeners for Woocommerce add to cart buttons
     setupListeners() {
       if (typeof jQuery !== 'undefined') {
-        jQuery(document.body).on('added_to_cart', function () {
-          actions.fetchCart();
+        const $ = jQuery;
+
+        // Listen for clicks on all add to cart buttons
+        $(document).on('click', '.add_to_cart_button', function (e) {
+          // Set a small timeout to give WooCommerce time to process the request
+          setTimeout(function () {
+            console.log('Add to cart button clicked, refreshing mini-cart');
+            actions.fetchCart();
+          }, 450);
         });
+
+        // Keep the standard events as backup
+        $(document.body).on(
+          'added_to_cart removed_from_cart updated_cart_totals wc_fragments_refreshed',
+          function () {
+            console.log('Cart event triggered, refreshing mini-cart');
+            actions.fetchCart();
+          }
+        );
+
+        // For the blocks interface specifically
+        document.addEventListener('DOMContentLoaded', function () {
+          // Find all add to cart buttons managed by the WC Blocks
+          const wcBlockButtons = document.querySelectorAll(
+            '.wc-block-components-product-button__button'
+          );
+
+          wcBlockButtons.forEach((button) => {
+            button.addEventListener('click', function () {
+              setTimeout(function () {
+                console.log('WC Block button clicked, refreshing mini-cart');
+                actions.fetchCart();
+              }, 450);
+            });
+          });
+        });
+
+        // ---------
+        // Add listeners for the WooCommerce Blocks quantity selector
+        $(document).on(
+          'change',
+          '.wc-block-components-quantity-selector__input',
+          function () {
+            setTimeout(function () {
+              console.log('Quantity changed, refreshing mini-cart');
+              actions.fetchCart();
+            }, 850); // Slightly longer timeout for quantity changes
+          }
+        );
+
+        // Add listeners for the plus/minus buttons in quantity selector
+        $(document).on(
+          'click',
+          '.wc-block-components-quantity-selector__button',
+          function () {
+            setTimeout(function () {
+              console.log('Quantity button clicked, refreshing mini-cart');
+              actions.fetchCart();
+            }, 850);
+          }
+        );
+
+        // Add listeners for the remove link in WooCommerce Blocks
+        $(document).on(
+          'click',
+          '.wc-block-cart-item__remove-link',
+          function () {
+            setTimeout(function () {
+              console.log('Item removed, refreshing mini-cart');
+              actions.fetchCart();
+            }, 2000);
+          }
+        );
+        // ---------
       }
     },
   },
