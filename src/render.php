@@ -20,17 +20,16 @@
 
 	<!-- Toggle mini cart button -->
 	<button class="mini-cart__toggle-cart-btn" data-wp-on--click="actions.toggleCart">
-		<span class="mini-cart__item-count" data-wp-text="state.cartData.items_count"></span>
+		<span class="toggle-cart-btn__item-count "
+			data-wp-class--hidden="state.cartIsEmpty" data-wp-text="state.cartData.items_count"></span>
 	</button>
 
-	<!-- <div class="overlay" data-wp-on--click="actions.toggleCart" data-wp-class--hidden="!state.isOpen"></div> -->
 	<div class="overlay" data-wp-class--is-open="state.isOpen" data-wp-on--click="actions.toggleCart"></div>
 
 	<div class="mini-cart" data-wp-class--is-open="state.isOpen">
-
 		<div class="mini-cart__heading-wrapper">
 			<!-- Heading -->
-			<h2 class="mini-cart__heading">
+			<h2 class="mini-cart__heading" data-wp-bind--hidden="state.cartIsEmpty">
 				<?php esc_html_e( 'Din varukorg (', 'mini-cart' ); ?>
 				<span data-wp-text="state.cartData.items_count"></span>
 				<?php esc_html_e( ' st )', 'mini-cart' ); ?>
@@ -40,11 +39,18 @@
 			</button>
 		</div>
 
+		<!-- Empty Cart  -->
+		<div class="mini-cart__empty-cart-wrapper"
+			data-wp-class--none="!state.cartIsEmpty">
+			<p><?php esc_html_e( 'Din varukorg är för närvarande tom!', 'mini-cart' ); ?></p>
 
-		<div class="mini-cart__product-wrapper">
+			<a href="<?php echo wc_get_page_permalink( 'shop' ); ?>"><?php esc_html_e( 'Börja handla', 'mini-cart' ); ?></a>
+		</div>
+
+		<div class="mini-cart__product-wrapper" data-wp-bind--hidden="state.cartIsEmpty">
 			<!-- Loop items -->
 			<template data-wp-each="state.cartData.items">
-				<div class="mini-cart__product-wrapper-grid-cols-3">
+				<div class="product-wrapper-grid-cols-3">
 
 					<!-- First column -->
 					<div class="product-wrapper__product-img">
@@ -162,7 +168,7 @@
 			</template>
 		</div>
 
-		<div class="mini-cart__footer">
+		<div class="mini-cart__footer" data-wp-bind--hidden="state.cartIsEmpty">
 			<div class="footer__top-section">
 				<p><?php esc_html_e( 'Total', 'mini-cart' ); ?></p>
 				<p data-wp-text="state.cartData.totals.formatted_total_price"></p>
@@ -173,9 +179,9 @@
 			</div>
 
 			<div class="footer__bottom-section">
-				<a href="<?php echo wc_get_page_permalink( 'cart' ); ?>"><?php esc_html_e( 'Visa min varukorg', 'mini-cart' ); ?></a>
+				<a href="<?php echo esc_url( wc_get_page_permalink( 'cart' ) ); ?>"><?php esc_html_e( 'Visa min varukorg', 'mini-cart' ); ?></a>
 
-				<a href="<?php echo wc_get_page_permalink( 'checkout' ); ?>"><?php esc_html_e( 'Gå till kassan', 'mini-cart' ); ?></a>
+				<a href="<?php echo esc_url( wc_get_page_permalink( 'checkout' ) ); ?>"><?php esc_html_e( 'Gå till kassan', 'mini-cart' ); ?></a>
 			</div>
 		</div>
 	</div>

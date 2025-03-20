@@ -28,5 +28,12 @@ import { useBlockProps } from '@wordpress/block-editor';
 export default function Edit({ attributes, setAttributes }) {
   const blockProps = useBlockProps();
 
-  return <div {...blockProps}>Mini Cart</div>;
+  return (
+    <div {...blockProps}>
+      <span
+        className="dashicons dashicons-cart"
+        style={{ fontSize: '2rem', width: '2rem', height: '2rem' }}
+      ></span>
+    </div>
+  );
 }

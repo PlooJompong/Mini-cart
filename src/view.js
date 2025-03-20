@@ -3,6 +3,7 @@ import { store } from '@wordpress/interactivity';
 const { state, actions } = store('mini-cart', {
   state: {
     isOpen: false,
+    cartIsEmpty: true,
     cartData: { items: [], items_count: 0 },
     apiNonce: '',
   },
@@ -26,6 +27,13 @@ const { state, actions } = store('mini-cart', {
         if (!data) {
           console.error('Cart data is undefined or null');
           return;
+        }
+
+        // Check is the cart is empty
+        if (parseInt(data.items_count) <= 0) {
+          state.cartIsEmpty = true;
+        } else {
+          state.cartIsEmpty = false;
         }
 
         // Defensively access items array
@@ -297,7 +305,7 @@ const { state, actions } = store('mini-cart', {
           setTimeout(function () {
             console.log('Add to cart button clicked, refreshing mini-cart');
             actions.fetchCart();
-          }, 450);
+          }, 400);
         });
 
         // Keep the standard events as backup
@@ -321,48 +329,10 @@ const { state, actions } = store('mini-cart', {
               setTimeout(function () {
                 console.log('WC Block button clicked, refreshing mini-cart');
                 actions.fetchCart();
-              }, 450);
+              }, 400);
             });
           });
         });
-
-        // ---------
-        // Add listeners for the WooCommerce Blocks quantity selector
-        $(document).on(
-          'change',
-          '.wc-block-components-quantity-selector__input',
-          function () {
-            setTimeout(function () {
-              console.log('Quantity changed, refreshing mini-cart');
-              actions.fetchCart();
-            }, 850); // Slightly longer timeout for quantity changes
-          }
-        );
-
-        // Add listeners for the plus/minus buttons in quantity selector
-        $(document).on(
-          'click',
-          '.wc-block-components-quantity-selector__button',
-          function () {
-            setTimeout(function () {
-              console.log('Quantity button clicked, refreshing mini-cart');
-              actions.fetchCart();
-            }, 850);
-          }
-        );
-
-        // Add listeners for the remove link in WooCommerce Blocks
-        $(document).on(
-          'click',
-          '.wc-block-cart-item__remove-link',
-          function () {
-            setTimeout(function () {
-              console.log('Item removed, refreshing mini-cart');
-              actions.fetchCart();
-            }, 2000);
-          }
-        );
-        // ---------
       }
     },
   },
