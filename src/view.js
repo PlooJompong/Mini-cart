@@ -48,7 +48,7 @@ const { state, actions } = store('mini-cart', {
 
         // Add formatted_total_price to data.totals
         data.totals.formatted_total_price = formatPrice(
-          Number(data.totals.total_price),
+          parseInt(data.totals.total_price),
           data.totals.currency_symbol,
           thousandSep,
           decimalSep
@@ -76,8 +76,16 @@ const { state, actions } = store('mini-cart', {
 
               // Add onSale to the item
               item.onSale =
-                Number(item.prices.regular_price) !==
-                Number(item.prices.sale_price);
+                parseInt(item.prices.regular_price) !==
+                parseInt(item.prices.sale_price);
+
+              if (item.type === 'variation') {
+                item.is_type_variation = true;
+              } else {
+                item.is_type_variation = false;
+              }
+
+              console.log('typ: ' + item.item_is_variation);
 
               // Get first image source
               if (
@@ -90,7 +98,7 @@ const { state, actions } = store('mini-cart', {
 
               // Add formatted_regular_price per item to item.prices
               item.prices.formatted_regular_price = formatPrice(
-                Number(item.prices.regular_price),
+                parseInt(item.prices.regular_price),
                 item.prices.currency_symbol,
                 thousandSep,
                 decimalSep
@@ -98,7 +106,7 @@ const { state, actions } = store('mini-cart', {
 
               // Add formatted_sale_price per item to item.prices
               item.prices.formatted_sale_price = formatPrice(
-                Number(item.prices.sale_price),
+                parseInt(item.prices.sale_price),
                 item.prices.currency_symbol,
                 thousandSep,
                 decimalSep
@@ -106,8 +114,8 @@ const { state, actions } = store('mini-cart', {
 
               // Add formatted_discount_amount per item to item.prices
               const discountAmount =
-                Number(item.prices.regular_price) -
-                Number(item.prices.sale_price);
+                parseInt(item.prices.regular_price) -
+                parseInt(item.prices.sale_price);
               item.prices.formatted_discount_amount = formatPrice(
                 discountAmount,
                 item.prices.currency_symbol,
@@ -232,7 +240,7 @@ const { state, actions } = store('mini-cart', {
 
         // Otherwise decrease quantity
         const newQuantity = Math.max(
-          Number(item.quantity_limits.minimum || 1),
+          parseInt(item.quantity_limits.minimum || 1),
           item.quantity - 1
         );
         actions.updateCartItem(key, newQuantity);
@@ -246,7 +254,7 @@ const { state, actions } = store('mini-cart', {
       const item = state.cartData.items.find((item) => item.key === key);
 
       if (item) {
-        const maximum = Number(item.quantity_limits.maximum || Infinity);
+        const maximum = parseInt(item.quantity_limits.maximum || Infinity);
 
         // Check if already at maximum quantity
         if (item.quantity >= maximum) {
@@ -263,12 +271,12 @@ const { state, actions } = store('mini-cart', {
     // Update quantity
     updateQuantityFromInput(event) {
       const key = event.target.getAttribute('key');
-      let newQuantity = Number(event.target.value);
+      let newQuantity = parseInt(event.target.value);
       const item = state.cartData.items.find((item) => item.key === key);
 
       if (item) {
-        const minimum = Number(item.quantity_limits.minimum || 1);
-        const maximum = Number(item.quantity_limits.maximum || Infinity);
+        const minimum = parseInt(item.quantity_limits.minimum || 1);
+        const maximum = parseInt(item.quantity_limits.maximum || Infinity);
 
         // If value is less than 1, set to 1 or minimum
         if (newQuantity < 1) {
@@ -337,6 +345,7 @@ const { state, actions } = store('mini-cart', {
     },
   },
   callbacks: {
+    // initialize strore on page load
     initializeStore() {
       actions.fetchCart();
       actions.setupListeners();

@@ -20,10 +20,11 @@
 
 	<!-- Toggle mini cart button -->
 	<button class="mini-cart__toggle-cart-btn" data-wp-on--click="actions.toggleCart">
-		<span class="toggle-cart-btn__item-count "
-			data-wp-class--hidden="state.cartIsEmpty" data-wp-text="state.cartData.items_count"></span>
+		<span class="toggle-cart-btn__item-count"
+			data-wp-bind--hidden="state.cartIsEmpty" data-wp-text="state.cartData.items_count"></span>
 	</button>
 
+	<!-- Overlay -->
 	<div class="overlay" data-wp-class--is-open="state.isOpen" data-wp-on--click="actions.toggleCart"></div>
 
 	<div class="mini-cart" data-wp-class--is-open="state.isOpen">
@@ -32,7 +33,7 @@
 			<h2 class="mini-cart__heading" data-wp-bind--hidden="state.cartIsEmpty">
 				<?php esc_html_e( 'Din varukorg (', 'mini-cart' ); ?>
 				<span data-wp-text="state.cartData.items_count"></span>
-				<?php esc_html_e( ' st )', 'mini-cart' ); ?>
+				<?php esc_html_e( 'vara )', 'mini-cart' ); ?>
 			</h2>
 
 			<button class="mini-cart__close-btn" data-wp-on--click="actions.toggleCart">
@@ -44,7 +45,7 @@
 			data-wp-class--none="!state.cartIsEmpty">
 			<p><?php esc_html_e( 'Din varukorg är för närvarande tom!', 'mini-cart' ); ?></p>
 
-			<a href="<?php echo wc_get_page_permalink( 'shop' ); ?>"><?php esc_html_e( 'Börja handla', 'mini-cart' ); ?></a>
+			<a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>"><?php esc_html_e( 'Börja handla', 'mini-cart' ); ?></a>
 		</div>
 
 		<div class="mini-cart__product-wrapper" data-wp-bind--hidden="state.cartIsEmpty">
@@ -101,7 +102,7 @@
 							<p class="description-wrapper__description" data-wp-text="context.item.use_description">
 							</p>
 
-							<ul class="description-wrapper__description-list" data-wp-bind--hidden="context.item.type === 'variation'">
+							<ul class="description-wrapper__description-list" data-wp-bind--hidden="!context.item.is_type_variation">
 								<!-- Loop items attributes -->
 								<template data-wp-each--variation="context.item.variation">
 									<li>
