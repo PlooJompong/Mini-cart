@@ -11,6 +11,14 @@
  * @see https://github.com/WordPress/gutenberg/blob/trunk/docs/reference-guides/block-api/block-metadata.md#render
  */
 
+// Initialize global state.
+wp_interactivity_state(
+	'mini-cart',
+	array(
+		'isOpen'      => false,
+		'cartIsEmpty' => true,
+	)
+);
 ?>
 
 <!-- Mini cart -->
@@ -33,7 +41,7 @@
 			<h2 class="mini-cart__heading" data-wp-bind--hidden="state.cartIsEmpty">
 				<?php esc_html_e( 'Din varukorg (', 'mini-cart' ); ?>
 				<span data-wp-text="state.cartData.items_count"></span>
-				<?php esc_html_e( 'vara )', 'mini-cart' ); ?>
+				<?php esc_html_e( 'st )', 'mini-cart' ); ?>
 			</h2>
 
 			<button class="mini-cart__close-btn" data-wp-on--click="actions.toggleCart">

@@ -1,4 +1,5 @@
 import { store } from '@wordpress/interactivity';
+import { formatPrice } from './utils/helpers.js';
 
 const { state, actions } = store('mini-cart', {
   state: {
@@ -10,9 +11,9 @@ const { state, actions } = store('mini-cart', {
   actions: {
     toggleCart() {
       state.isOpen = !state.isOpen;
-      console.log(state.isOpen);
     },
 
+    // Fetch cart items
     async fetchCart() {
       try {
         const response = await fetch('/wp-json/wc/store/v1/cart');
@@ -84,8 +85,6 @@ const { state, actions } = store('mini-cart', {
               } else {
                 item.is_type_variation = false;
               }
-
-              console.log('typ: ' + item.item_is_variation);
 
               // Get first image source
               if (
@@ -231,20 +230,22 @@ const { state, actions } = store('mini-cart', {
       const key = event.target.getAttribute('key');
       // Find the current item in the cart state
       const item = state.cartData.items.find((item) => item.key === key);
-      if (item) {
-        // If quantity would go below 1, remove the item instead
-        if (item.quantity <= 1) {
-          actions.removeCartItem(key);
-          return;
-        }
 
-        // Otherwise decrease quantity
-        const newQuantity = Math.max(
-          parseInt(item.quantity_limits.minimum || 1),
-          item.quantity - 1
-        );
-        actions.updateCartItem(key, newQuantity);
+      if (!item) {
+        return;
       }
+
+      if (item.quantity <= 1) {
+        actions.removeCartItem(key);
+        return;
+      }
+
+      // Otherwise decrease quantity
+      const newQuantity = Math.max(
+        parseInt(item.quantity_limits.minimum || 1),
+        item.quantity - 1
+      );
+      actions.updateCartItem(key, newQuantity);
     },
 
     // Increase quantity
@@ -253,19 +254,21 @@ const { state, actions } = store('mini-cart', {
       // Find the current item in the cart state
       const item = state.cartData.items.find((item) => item.key === key);
 
-      if (item) {
-        const maximum = parseInt(item.quantity_limits.maximum || Infinity);
-
-        // Check if already at maximum quantity
-        if (item.quantity >= maximum) {
-          // Already at max, do nothing
-          return;
-        }
-
-        // Otherwise increase quantity
-        const newQuantity = Math.min(maximum, item.quantity + 1);
-        actions.updateCartItem(key, newQuantity);
+      if (!item) {
+        return;
       }
+
+      const maximum = parseInt(item.quantity_limits.maximum || Infinity);
+
+      // Check if already at maximum quantity
+      if (item.quantity >= maximum) {
+        // Already at max, do nothing
+        return;
+      }
+
+      // Otherwise increase quantity
+      const newQuantity = Math.min(maximum, item.quantity + 1);
+      actions.updateCartItem(key, newQuantity);
     },
 
     // Update quantity
@@ -274,107 +277,54 @@ const { state, actions } = store('mini-cart', {
       let newQuantity = parseInt(event.target.value);
       const item = state.cartData.items.find((item) => item.key === key);
 
-      if (item) {
-        const minimum = parseInt(item.quantity_limits.minimum || 1);
-        const maximum = parseInt(item.quantity_limits.maximum || Infinity);
-
-        // If value is less than 1, set to 1 or minimum
-        if (newQuantity < 1) {
-          newQuantity = minimum;
-          // Update the input value visually
-          event.target.value = newQuantity;
-        }
-
-        // If value exceeds maximum, cap at maximum
-        if (newQuantity > maximum) {
-          newQuantity = maximum;
-          // Update the input value visually
-          event.target.value = newQuantity;
-        }
-
-        actions.updateCartItem(key, newQuantity);
+      if (!item) {
+        return;
       }
+
+      const minimum = parseInt(item.quantity_limits.minimum || 1);
+      const maximum = parseInt(item.quantity_limits.maximum || Infinity);
+
+      // If value is less than 1, set to 1 or minimum
+      if (newQuantity < 1) {
+        newQuantity = minimum;
+        // Update the input value visually
+        event.target.value = newQuantity;
+      }
+
+      // If value exceeds maximum, cap at maximum
+      if (newQuantity > maximum) {
+        newQuantity = maximum;
+        // Update the input value visually
+        event.target.value = newQuantity;
+      }
+
+      actions.updateCartItem(key, newQuantity);
     },
 
     // Remove item
     removeItem(event) {
       const key = event.target.getAttribute('key');
+
+      if (!key) {
+        return;
+      }
+
       actions.removeCartItem(key);
     },
 
     // Listeners for Woocommerce add to cart buttons
     setupListeners() {
-      if (typeof jQuery !== 'undefined') {
-        const $ = jQuery;
-
-        // Listen for clicks on all add to cart buttons
-        $(document).on('click', '.add_to_cart_button', function (e) {
-          // Set a small timeout to give WooCommerce time to process the request
-          setTimeout(function () {
-            console.log('Add to cart button clicked, refreshing mini-cart');
-            actions.fetchCart();
-          }, 400);
-        });
-
-        // Keep the standard events as backup
-        $(document.body).on(
-          'added_to_cart removed_from_cart updated_cart_totals wc_fragments_refreshed',
-          function () {
-            console.log('Cart event triggered, refreshing mini-cart');
-            actions.fetchCart();
-          }
-        );
-
-        // For the blocks interface specifically
-        document.addEventListener('DOMContentLoaded', function () {
-          // Find all add to cart buttons managed by the WC Blocks
-          const wcBlockButtons = document.querySelectorAll(
-            '.wc-block-components-product-button__button'
-          );
-
-          wcBlockButtons.forEach((button) => {
-            button.addEventListener('click', function () {
-              setTimeout(function () {
-                console.log('WC Block button clicked, refreshing mini-cart');
-                actions.fetchCart();
-              }, 400);
-            });
-          });
-        });
-      }
+      document.addEventListener('wc-blocks_added_to_cart', () => {
+        console.log('wc blocks added to cart');
+        actions.fetchCart();
+      });
     },
   },
   callbacks: {
-    // initialize strore on page load
+    // Initialize strore on page load
     initializeStore() {
       actions.fetchCart();
       actions.setupListeners();
     },
   },
 });
-
-// Helper function to format prices using WooCommerce currency settings
-function formatPrice(
-  price,
-  currencySymbol,
-  thousandSeparator = ' ',
-  decimalSeparator = ','
-) {
-  // Convert to decimal format
-  const decimalPrice = (price / 100).toFixed(2);
-
-  // Split into integer and decimal parts
-  const [integerPart, decimalPart] = decimalPrice.split('.');
-
-  // Add thousand separator
-  const formattedInteger = integerPart.replace(
-    /\B(?=(\d{3})+(?!\d))/g,
-    thousandSeparator
-  );
-
-  // Combine with decimal part using the specified decimal separator
-  const formattedPrice = `${formattedInteger}${decimalSeparator}${decimalPart}`;
-
-  // Return with currency symbol
-  return `${formattedPrice} ${currencySymbol}`;
-}
